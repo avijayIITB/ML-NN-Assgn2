@@ -40,12 +40,15 @@ features_train = get_feature_matrix('train.csv')
 labels_train = get_output('train.csv')
 features_train_norm = (features_train - features_train.mean())/(features_train.max() - features_train.min()) # Normalized data
 #d_test = get_feature_matrix('test.csv')
-print(d_train_norm)
-part = partition(d_train_norm, 80000)
+print(features_train_norm)
+part = partition(features_train_norm, 80000)
 
 learning_rate = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
 num_hidden_layers = [1, 2, 3, 4, 5]
 regularizer_lambda = [100, 10, 1, 1e-1, 1e-2]
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(features_train_norm, labels_train, test_size=0.1, random_state=0)
 
 # Function for K fold cross validation
 def kfoldCV(classifier, features, k, seed=None):
