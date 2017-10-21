@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Oct 21 19:46:49 2017
+
+@author: Vijay
+"""
+
 # Assignment 2 : Implementation of a fully connected Nueral Network from scratch 
 import random
 import numpy as np
@@ -14,70 +21,31 @@ def get_output(file_path):
     datareader = pd.read_csv(datafile,header=0, usecols=['class'])
     a = datareader.values                   # store as array/matrix
     return a
-    
-# Assigns each entry to a non-full partition
-def assign(partitions, k, size, seed=None):
-    if seed is not None:
-        random.Random(seed)
-    x = random.randint(0,k-1)
-    while(len(partitions[x]) >= size):
-        x = random.randint(0,k-1)
-    return x
-
-# Divides data set into k partitions
-def partition(dataSet, k, seed=None):
-    size = np.ceil(len(dataSet)/float(k))
-    partitions = [[] for i in range(k)]
-    j = 0
-    
-    for entry in dataSet:
-        x = assign(partitions, k, size, seed) 
-        partitions[x].append(entry)
-
-    return partitions
-    
+        
 features_train = get_feature_matrix('train.csv')
 labels_train = get_output('train.csv')
 features_train_norm = (features_train - features_train.mean())/(features_train.max() - features_train.min()) # Normalized data
 #d_test = get_feature_matrix('test.csv')
 print(features_train_norm)
-part = partition(features_train_norm, 80000)
+
 
 learning_rate = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
 num_hidden_layers = [1, 2, 3, 4, 5]
 regularizer_lambda = [100, 10, 1, 1e-1, 1e-2]
 
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(features_train_norm, labels_train, test_size=0.1, random_state=0)
+from sklearn.model_selection import KFold
+kf = KFold(n_splits=10, random_state=None, shuffle=True)
+kf.get_n_splits(features_train_norm)
+print(kf)  
+for train_index, test_index in kf.split(features_train_norm):
+   X_train, X_test = features_train[train_index], features_train[test_index]
+   y_train, y_test = labels_train[train_index], labels_train[test_index]
+   
+from sklearn.neural_network import MLPClassifier
+clf = MLPClassifier(solver='sgd', alpha=100,hidden_layer_sizes=(1), learning_rate_init = 1e-1, random_state=1)
+clf.fit(X_train,y_train.ravel())
+pred = clf.predict(X_test)
 
-# Function for K fold cross validation
-def kfoldCV(classifier, features, k, seed=None):
-    partitions = partition(features, k, seed)
-    errors = list()
-        
-    # Run the algorithm k times, record error each time
-    for i in range(k):
-        trainingSet = list()
-        for j in range(k):
-            if j != i:
-                trainingSet.append(partitions[j])
-
-        # flatten training set
-        trainingSet = [item for entry in trainingSet for item in entry]
-        testSet = partitions[i]
-        
-        # Train and classify model
-        trainedClassifier = train(classifier, trainingSet)
-        errors.append(classify(classifier, testSet))
-        
-    # Compute statistics
-    mean = sum(errors)/k
-    variance = sum([(error - mean)**2 for error in errors])/(k)
-    standardDeviation = variance**.5
-    confidenceInterval = (mean - 1.96*standardDeviation, mean + 1.96*standardDeviation)
- 
-    _output("\t\tMean = {0:.2f} \n\t\tVariance = {1:.4f} \n\t\tStandard Devation = {2:.3f} \n\t\t95% Confidence interval: [{3:.2f}, {4:.2f}]"\
-            .format(mean, variance, standardDeviation, confidenceInterval[0], confidenceInterval[1]))
-
-    return (errors, mean, variance, confidenceInterval, k)
-
+from sklearn.metrics import accuracy_score
+ac = accuracy_score(y_test,pred)
+#print(ac)
